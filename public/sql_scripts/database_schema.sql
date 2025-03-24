@@ -1,5 +1,4 @@
-
--- Sistema de Fidelidade Database Schema for SQL Server
+-- Sistema de Fidelidade Database Schema for SQL Server Express
 
 -- Create Database
 CREATE DATABASE SistemaFidelidade;
@@ -41,8 +40,8 @@ CREATE TABLE Administradores (
     Nome NVARCHAR(100) NOT NULL,
     Usuario NVARCHAR(20) NOT NULL UNIQUE,
     Email NVARCHAR(100) NOT NULL UNIQUE,
-    SenhaSalt NVARCHAR(128) NOT NULL,
-    SenhaHash NVARCHAR(128) NOT NULL,
+    SenhaSalt NVARCHAR(128),
+    SenhaHash NVARCHAR(128),
     DataCadastro DATETIME NOT NULL DEFAULT GETDATE(),
     TokenRecuperacao NVARCHAR(128),
     TokenExpiracao DATETIME,
@@ -79,6 +78,13 @@ CREATE INDEX IX_Compras_Data ON Compras(Data);
 CREATE INDEX IX_ResgatePontos_ClienteId ON ResgatePontos(ClienteId);
 GO
 
+-- Insert default admin user with fixed credentials (Admin/1234)
+-- In a production environment, you would hash the password properly
+INSERT INTO Administradores (Nome, Usuario, Email, SenhaSalt, SenhaHash, DataCadastro)
+VALUES ('Administrador do Sistema', 'Admin', 'admin@sistemafidelidade.com', 'static-salt', 'hashed-password-for-1234', GETDATE());
+GO
+
+-- Create Stored Procedures (keep existing stored procedures)
 -- Create Stored Procedure for Password Reset
 CREATE PROCEDURE sp_GerarTokenRecuperacao
     @CPF NVARCHAR(14),
@@ -183,9 +189,4 @@ BEGIN
     -- Return result
     SELECT @Sucesso AS Sucesso;
 END;
-GO
-
--- Create default admin account
-INSERT INTO Administradores (Nome, Usuario, Email, SenhaSalt, SenhaHash, DataCadastro)
-VALUES ('Administrador', 'admin', 'admin@sistemafidelidade.com', 'salt-value', 'hash-value', GETDATE());
 GO

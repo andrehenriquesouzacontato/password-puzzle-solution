@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -15,12 +14,11 @@ const AdminLogin: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
+    // Check for the specific admin credentials
     setTimeout(() => {
       setIsLoading(false);
       
-      // Simple validation for demo
-      if (usuario.length > 3 && senha.length > 3) {
+      if (usuario === 'Admin' && senha === '1234') {
         toast.success('Login administrativo realizado com sucesso');
         navigate('/admin/dashboard');
       } else {
