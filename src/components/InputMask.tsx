@@ -1,6 +1,6 @@
 
 import React, { useState, ChangeEvent } from 'react';
-import { formatCPF, formatPhone, formatCurrency } from '../utils/formatters';
+import { formatCPF, formatPhone, formatCurrency, parseCurrencyInput } from '../utils/formatters';
 import { Eye, EyeOff } from 'lucide-react';
 
 interface InputMaskProps {
@@ -36,14 +36,28 @@ const InputMask: React.FC<InputMaskProps> = ({
       onChange(formatPhone(digits));
     }
     else if (type === 'currency') {
-      // Process currency input
-      const digits = inputValue.replace(/[^\d,]/g, '');
-      if (digits === '') {
+      // Remove o prefixo R$ se existir
+      const valueWithoutPrefix = inputValue.replace(/^R\$\s?/, '');
+      
+      // Remove caracteres não numéricos, exceto vírgula e ponto
+      const sanitized = valueWithoutPrefix.replace(/[^\d,.]/g, '');
+      
+      if (sanitized === '' || sanitized === ',' || sanitized === '.') {
         onChange('');
-      } else {
-        // Format as currency
-        const parsed = parseFloat(digits.replace(',', '.')) || 0;
-        const formatted = formatCurrency(parsed).replace('R$', '').trim();
+        return;
+      }
+      
+      // Substituir pontos por nada (para considerar apenas vírgulas como separador decimal)
+      const withoutDots = sanitized.replace(/\./g, '');
+      
+      // Substituir vírgulas por pontos para operações matemáticas
+      const withDecimalPoint = withoutDots.replace(',', '.');
+      
+      // Converter para número e formatar
+      const numericValue = parseFloat(withDecimalPoint);
+      if (!isNaN(numericValue)) {
+        // Formatar com o formatCurrency, mas remover o prefixo R$ para o input
+        const formatted = formatCurrency(numericValue).replace('R$', '').trim();
         onChange(formatted);
       }
     }
@@ -69,10 +83,12 @@ const InputMask: React.FC<InputMaskProps> = ({
     <div className="relative w-full">
       <input
         type={getInputType()}
-        value={value}
+        value={type === 'currency' ? `${value}` : value}
         onChange={handleChange}
         placeholder={placeholder}
-        className={`input-mask ${className}`}
+        className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent ${
+          type === 'currency' ? 'pl-8' : ''
+        } ${className}`}
         required={required}
       />
       

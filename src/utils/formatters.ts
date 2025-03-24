@@ -4,6 +4,8 @@ export const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value);
 };
 
@@ -39,6 +41,12 @@ export const isValidEmail = (email: string): boolean => {
 
 // Parse currency input (remove R$ and transform commas)
 export const parseCurrencyInput = (value: string): number => {
-  const sanitized = value.replace(/[^\d,]/g, '').replace(',', '.');
-  return parseFloat(sanitized) || 0;
+  // Remove R$ e espaços
+  const withoutSymbol = value.replace(/R\$\s?/g, '');
+  // Remove pontos de milhar
+  const withoutThousandSep = withoutSymbol.replace(/\./g, '');
+  // Substitui vírgula por ponto para converter para número
+  const withDot = withoutThousandSep.replace(',', '.');
+  // Converte para número
+  return parseFloat(withDot) || 0;
 };
