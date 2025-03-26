@@ -7,34 +7,26 @@ import { ArrowLeft, Award, Trash2, Edit2, ShoppingBag, Gift } from 'lucide-react
 import InputMask from '../../components/InputMask';
 import { formatCurrency } from '../../utils/formatters';
 
-// Mock data
-const mockCliente = {
-  id: '1',
-  nome: 'Andre Henrique de Souza Guedes',
-  cpf: '309.628.608-67',
-  email: 'andreguedessguita@gmail.com',
-  telefone: '(11) 99342-3308',
-  pontos: 96,
-  dataCadastro: '2025-03-24'
-};
-
-const mockCompras = [
-  { id: '1', valor: 29.90, pontos: 29, data: '2025-03-17' },
-  { id: '2', valor: 67.87, pontos: 67, data: '2025-03-17' }
-];
-
 const ClienteDetalhes: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [cliente, setCliente] = useState(mockCliente);
-  const [compras, setCompras] = useState(mockCompras);
+  const [cliente, setCliente] = useState({
+    id: '',
+    nome: '',
+    cpf: '',
+    email: '',
+    telefone: '',
+    pontos: 0,
+    dataCadastro: new Date().toISOString().split('T')[0]
+  });
+  const [compras, setCompras] = useState([]);
   const [valor, setValor] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   
   useEffect(() => {
     // In a real app, this would be an API call to fetch client details
-    // For demo purposes, we'll use the mock data
     console.log('Fetching details for client ID:', id);
+    // API call will be implemented when ready
   }, [id]);
   
   const handleRegistrarCompra = (e: React.FormEvent) => {
@@ -123,7 +115,7 @@ const ClienteDetalhes: React.FC = () => {
         <h1 className="page-title">Detalhes do Cliente</h1>
         
         <div className="card-container">
-          <h2 className="text-2xl font-bold mb-1">{cliente.nome}</h2>
+          <h2 className="text-2xl font-bold mb-1">{cliente.nome || 'Cliente não encontrado'}</h2>
           <p className="text-gray-500 mb-4">Cliente desde {new Date(cliente.dataCadastro).toLocaleDateString('pt-BR')}</p>
           
           <div className="flex flex-col items-center my-6">
@@ -152,17 +144,17 @@ const ClienteDetalhes: React.FC = () => {
           <div className="space-y-4">
             <div>
               <div className="text-gray-500">CPF</div>
-              <div className="font-medium">{cliente.cpf}</div>
+              <div className="font-medium">{cliente.cpf || 'Não informado'}</div>
             </div>
             
             <div>
               <div className="text-gray-500">E-mail</div>
-              <div className="font-medium">{cliente.email}</div>
+              <div className="font-medium">{cliente.email || 'Não informado'}</div>
             </div>
             
             <div>
               <div className="text-gray-500">Telefone</div>
-              <div className="font-medium">{cliente.telefone}</div>
+              <div className="font-medium">{cliente.telefone || 'Não informado'}</div>
             </div>
           </div>
         </div>

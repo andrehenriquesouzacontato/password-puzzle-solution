@@ -5,19 +5,16 @@ import Header from '../components/Header';
 import { Calendar, Edit2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-// Cliente vazio até conectar com a API
-const clienteVazio = {
-  id: '',
-  nome: 'Cliente',
-  cpf: '',
-  email: '',
-  telefone: '',
-  pontos: 0,
-  dataCadastro: new Date().toISOString().split('T')[0]
-};
-
 const Dashboard: React.FC = () => {
-  const [cliente, setCliente] = useState(clienteVazio);
+  const [cliente, setCliente] = useState({
+    id: '',
+    nome: '',
+    cpf: '',
+    email: '',
+    telefone: '',
+    pontos: 0,
+    dataCadastro: new Date().toISOString().split('T')[0]
+  });
   const [compras, setCompras] = useState([]);
   
   return (
@@ -25,7 +22,7 @@ const Dashboard: React.FC = () => {
       <Header />
       
       <div className="container max-w-xl px-4 pb-8">
-        <h1 className="page-title">Olá, {cliente.nome.split(' ')[0]}</h1>
+        <h1 className="page-title">Olá, {cliente.nome ? cliente.nome.split(' ')[0] : 'Cliente'}</h1>
         
         {/* Pontos de Fidelidade */}
         <div className="card-container">
