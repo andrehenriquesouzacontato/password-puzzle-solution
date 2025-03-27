@@ -17,6 +17,12 @@ export interface ResgatePontosCreateData {
 }
 
 const resgatePontosService = {
+  // Obter todos os resgates (admin)
+  getAll: async () => {
+    const response = await api.get('/ResgatePontos');
+    return response.data;
+  },
+  
   // Obter resgates de pontos de um cliente
   getByClienteId: async (clienteId: string) => {
     const response = await api.get(`/ResgatePontos/cliente/${clienteId}`);

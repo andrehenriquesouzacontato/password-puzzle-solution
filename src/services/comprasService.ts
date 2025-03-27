@@ -16,6 +16,12 @@ export interface CompraCreateData {
 }
 
 const comprasService = {
+  // Obter todas as compras (admin)
+  getAll: async () => {
+    const response = await api.get('/Compras');
+    return response.data;
+  },
+  
   // Obter compras de um cliente
   getByClienteId: async (clienteId: string) => {
     const response = await api.get(`/Compras/cliente/${clienteId}`);
