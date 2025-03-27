@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 // Configuração do cliente axios
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://localhost:7070/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -28,6 +28,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.error('API Error:', error);
+    
     const message = error.response?.data?.message || 'Ocorreu um erro na requisição';
     
     // Erros de autenticação
