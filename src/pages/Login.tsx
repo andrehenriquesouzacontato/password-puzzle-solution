@@ -1,25 +1,40 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import InputMask from '../components/InputMask';
 import { AlertCircle } from 'lucide-react';
+import api from '../services/api';
 
 const Login: React.FC = () => {
   const [cpf, setCpf] = useState('');
   const [senha, setSenha] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [apiStatus, setApiStatus] = useState<string>('Verificando conexão...');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkApiConnection = async () => {
+      try {
+        await api.get('/health');
+        setApiStatus('Conectado à API');
+        toast.success('API conectada com sucesso!');
+      } catch (error) {
+        console.error('Erro ao conectar com a API:', error);
+        setApiStatus('Erro na conexão com a API');
+        toast.error('Não foi possível conectar à API. Verifique se o servidor está rodando.');
+      }
+    };
+
+    checkApiConnection();
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Mock login - in real implementation this would connect to your API
     setTimeout(() => {
       setIsLoading(false);
       
-      // Simulate successful login
       if (cpf.length > 10) {
         toast.success('Login realizado com sucesso!');
         navigate('/dashboard');
@@ -38,6 +53,10 @@ const Login: React.FC = () => {
             <span>de Fidelidade</span>
           </h1>
           <p className="text-gray-600">Acesse sua conta para gerenciar pontos</p>
+          
+          <div className={`mt-2 text-sm ${apiStatus.includes('Erro') ? 'text-red-500' : 'text-green-600'}`}>
+            {apiStatus}
+          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
