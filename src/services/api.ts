@@ -30,6 +30,11 @@ api.interceptors.response.use(
   (error) => {
     console.error('API Error:', error);
     
+    if (!error.response && error.code === 'ERR_NETWORK') {
+      toast.error('Não foi possível conectar ao servidor. Verifique se a API está rodando.');
+      return Promise.reject(error);
+    }
+    
     const message = error.response?.data?.message || 'Ocorreu um erro na requisição';
     
     // Erros de autenticação
@@ -49,7 +54,7 @@ api.interceptors.response.use(
       toast.error('Você não tem permissão para esta operação');
     } else if (error.response?.status === 500) {
       toast.error('Erro no servidor. Tente novamente mais tarde.');
-    } else {
+    } else if (error.response) {
       toast.error(message);
     }
     

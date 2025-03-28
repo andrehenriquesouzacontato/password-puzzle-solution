@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import InputMask from '../components/InputMask';
 import { AlertCircle } from 'lucide-react';
 import api from '../services/api';
+import authService from '../services/authService';
 
 const Login: React.FC = () => {
   const [cpf, setCpf] = useState('');
@@ -21,27 +23,39 @@ const Login: React.FC = () => {
       } catch (error) {
         console.error('Erro ao conectar com a API:', error);
         setApiStatus('Erro na conexão com a API');
-        toast.error('Não foi possível conectar à API. Verifique se o servidor está rodando.');
+        toast.error('Não foi possível conectar à API. Verifique se o servidor está rodando na porta 5000.');
       }
     };
 
     checkApiConnection();
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Tentativa real de login com a API
+      const loginData = {
+        cpf: cpf.replace(/\D/g, ''), // Remove caracteres não numéricos
+        senha: senha
+      };
       
+      await authService.clienteLogin(loginData);
+      toast.success('Login realizado com sucesso!');
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Erro ao fazer login:', error);
+      // Fallback para desenvolvimento - Login simulado
       if (cpf.length > 10) {
-        toast.success('Login realizado com sucesso!');
+        toast.success('Login simulado realizado com sucesso!');
         navigate('/dashboard');
       } else {
         toast.error('CPF ou senha inválidos');
       }
-    }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
