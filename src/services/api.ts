@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 // Configuração do cliente axios
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: 'http://localhost:5000/api', // Garantindo que estamos usando HTTP (não HTTPS)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -31,7 +31,7 @@ api.interceptors.response.use(
     console.error('API Error:', error);
     
     if (!error.response && error.code === 'ERR_NETWORK') {
-      toast.error('Não foi possível conectar ao servidor. Verifique se a API está rodando.');
+      toast.error('Não foi possível conectar ao servidor. Verifique se a API está rodando na porta 5000.');
       return Promise.reject(error);
     }
     
