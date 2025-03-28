@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 // Configuração do cliente axios
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://localhost:7070/api',
+  baseURL: 'https://localhost:7070/api',
   headers: {
     'Content-Type': 'application/json',
   },
