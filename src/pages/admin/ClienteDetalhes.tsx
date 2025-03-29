@@ -6,80 +6,168 @@ import Header from '../../components/Header';
 import { ArrowLeft, Award, Trash2, Edit2, ShoppingBag, Gift } from 'lucide-react';
 import InputMask from '../../components/InputMask';
 import { formatCurrency } from '../../utils/formatters';
-
-// Mock data
-const mockCliente = {
-  id: '1',
-  nome: 'Andre Henrique de Souza Guedes',
-  cpf: '309.628.608-67',
-  email: 'andreguedessguita@gmail.com',
-  telefone: '(11) 99342-3308',
-  pontos: 96,
-  dataCadastro: '2025-03-24'
-};
-
-const mockCompras = [
-  { id: '1', valor: 29.90, pontos: 29, data: '2025-03-17' },
-  { id: '2', valor: 67.87, pontos: 67, data: '2025-03-17' }
-];
+import { Cliente, Compra } from '../../models/types';
 
 const ClienteDetalhes: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [cliente, setCliente] = useState(mockCliente);
-  const [compras, setCompras] = useState(mockCompras);
+  const [cliente, setCliente] = useState<Cliente | null>(null);
+  const [compras, setCompras] = useState<Compra[]>([]);
   const [valor, setValor] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   
   useEffect(() => {
-    // In a real app, this would be an API call to fetch client details
-    // For demo purposes, we'll use the mock data
-    console.log('Fetching details for client ID:', id);
-  }, [id]);
+    // Buscar dados do cliente do localStorage
+    const loadClienteData = () => {
+      console.log('Fetching details for client ID:', id);
+      const savedClientes = localStorage.getItem('clientes');
+      if (savedClientes) {
+        try {
+          const parsedClientes: Cliente[] = JSON.parse(savedClientes);
+          const clienteEncontrado = parsedClientes.find(c => c.id === id);
+          
+          if (clienteEncontrado) {
+            setCliente(clienteEncontrado);
+          } else {
+            toast.error('Cliente não encontrado');
+            navigate('/admin/dashboard');
+          }
+        } catch (error) {
+          console.error('Erro ao carregar dados do cliente:', error);
+          toast.error('Erro ao carregar dados do cliente');
+        }
+      } else {
+        toast.error('Nenhum cliente cadastrado');
+        navigate('/admin/dashboard');
+      }
+    };
+
+    // Buscar compras do cliente do localStorage
+    const loadComprasData = () => {
+      const savedCompras = localStorage.getItem('compras');
+      if (savedCompras) {
+        try {
+          const parsedCompras: Compra[] = JSON.parse(savedCompras);
+          const comprasDoCliente = parsedCompras.filter(compra => compra.clienteId === id);
+          setCompras(comprasDoCliente);
+        } catch (error) {
+          console.error('Erro ao carregar compras:', error);
+        }
+      }
+    };
+
+    loadClienteData();
+    loadComprasData();
+  }, [id, navigate]);
   
   const handleRegistrarCompra = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!valor) {
+    if (!valor || !cliente) {
       toast.error('Informe o valor da compra');
       return;
     }
     
-    // Convert to number and calculate points (1 real = 1 point)
+    // Converter para número e calcular pontos (1 real = 1 ponto)
     const valorNumerico = parseFloat(valor.replace(',', '.'));
     const pontosGanhos = Math.floor(valorNumerico);
     
-    // In a real app, this would be an API call
-    toast.success(`Compra de ${formatCurrency(valorNumerico)} registrada com sucesso!`);
-    
-    // Update client points
-    setCliente(prev => ({
-      ...prev,
-      pontos: prev.pontos + pontosGanhos
-    }));
-    
-    // Add new purchase to history
-    const novaCompra = {
+    // Criar nova compra
+    const novaCompra: Compra = {
       id: Date.now().toString(),
+      clienteId: cliente.id,
       valor: valorNumerico,
       pontos: pontosGanhos,
       data: new Date().toISOString().split('T')[0]
     };
     
+    // Atualizar lista de compras
+    const savedCompras = localStorage.getItem('compras');
+    let comprasAtualizadas: Compra[] = [];
+    
+    if (savedCompras) {
+      try {
+        comprasAtualizadas = JSON.parse(savedCompras);
+      } catch (error) {
+        console.error('Erro ao carregar compras existentes:', error);
+      }
+    }
+    
+    comprasAtualizadas.push(novaCompra);
+    localStorage.setItem('compras', JSON.stringify(comprasAtualizadas));
+    
+    // Atualizar pontos do cliente
+    const savedClientes = localStorage.getItem('clientes');
+    if (savedClientes && cliente) {
+      try {
+        const parsedClientes: Cliente[] = JSON.parse(savedClientes);
+        const clienteIndex = parsedClientes.findIndex(c => c.id === cliente.id);
+        
+        if (clienteIndex !== -1) {
+          const clienteAtualizado = {
+            ...parsedClientes[clienteIndex],
+            pontos: parsedClientes[clienteIndex].pontos + pontosGanhos
+          };
+          
+          parsedClientes[clienteIndex] = clienteAtualizado;
+          localStorage.setItem('clientes', JSON.stringify(parsedClientes));
+          
+          setCliente(clienteAtualizado);
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar pontos do cliente:', error);
+      }
+    }
+    
+    // Atualizar estado local
     setCompras(prev => [novaCompra, ...prev]);
     setValor('');
+    
+    toast.success(`Compra de ${formatCurrency(valorNumerico)} registrada com sucesso!`);
   };
   
   const handleResgatarPontos = () => {
-    // In a real app, this would navigate to a redemption page
     toast.info('Funcionalidade de resgate em desenvolvimento');
   };
   
   const handleDeleteClient = () => {
-    // In a real app, this would be an API call to delete the client
-    toast.success('Cliente excluído com sucesso');
-    navigate('/admin/dashboard');
+    if (!cliente) return;
+    
+    // Remover cliente do localStorage
+    const savedClientes = localStorage.getItem('clientes');
+    if (savedClientes) {
+      try {
+        const parsedClientes: Cliente[] = JSON.parse(savedClientes);
+        const clientesAtualizados = parsedClientes.filter(c => c.id !== cliente.id);
+        localStorage.setItem('clientes', JSON.stringify(clientesAtualizados));
+        
+        // Remover também todas as compras do cliente
+        const savedCompras = localStorage.getItem('compras');
+        if (savedCompras) {
+          const parsedCompras: Compra[] = JSON.parse(savedCompras);
+          const comprasAtualizadas = parsedCompras.filter(compra => compra.clienteId !== cliente.id);
+          localStorage.setItem('compras', JSON.stringify(comprasAtualizadas));
+        }
+        
+        toast.success('Cliente excluído com sucesso');
+        navigate('/admin/dashboard');
+      } catch (error) {
+        console.error('Erro ao excluir cliente:', error);
+        toast.error('Erro ao excluir cliente');
+      }
+    }
   };
+  
+  if (!cliente) {
+    return (
+      <div className="min-h-screen bg-gray-50 animate-fade-in">
+        <Header />
+        <div className="container max-w-xl px-4 pb-8 text-center py-10">
+          <p>Carregando dados do cliente...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-gray-50 animate-fade-in">
@@ -247,7 +335,7 @@ const ClienteDetalhes: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-4 text-gray-500">
-              Nenhuma atividade registrada
+              Nenhuma compra registrada
             </div>
           )}
         </div>
