@@ -1,13 +1,11 @@
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using SistemaFidelidade.API.Data;
-using SistemaFidelidade.API.Models;
 using System;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,17 +16,17 @@ namespace SistemaFidelidade.API.Controllers
     [Route("api/[controller]")]
     public class AdminAuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly string _connectionString;
         private readonly string _jwtSecret;
         private readonly string _jwtIssuer;
         private readonly string _jwtAudience;
         private readonly int _jwtExpiryMinutes;
 
-        public AdminAuthController(ApplicationDbContext context, IConfiguration configuration)
+        public AdminAuthController(IConfiguration configuration)
         {
-            _context = context;
             _configuration = configuration;
+            _connectionString = _configuration.GetConnectionString("DefaultConnection");
             _jwtSecret = _configuration["JwtSettings:Secret"];
             _jwtIssuer = _configuration["JwtSettings:Issuer"];
             _jwtAudience = _configuration["JwtSettings:Audience"];
@@ -59,63 +57,76 @@ namespace SistemaFidelidade.API.Controllers
                 // Hard-coded check for the specified credentials
                 if (request.Usuario == "Admin" && request.Senha == "1234")
                 {
-                    var admin = await _context.Administradores
-                        .FirstOrDefaultAsync(a => a.Usuario == "Admin");
-
-                    if (admin == null)
-                    {
-                        // Use default admin if not found in database
-                        admin = new Administrador
-                        {
-                            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-                            Nome = "Administrador do Sistema",
-                            Usuario = "Admin",
-                            Email = "admin@sistemafidelidade.com"
-                        };
-                    }
+                    // In a production environment, you would validate against the database
+                    string adminId = "00000000-0000-0000-0000-000000000000"; // Placeholder ID
+                    string adminName = "Administrador do Sistema";
+                    string adminEmail = "admin@sistemafidelidade.com";
 
                     // Generate JWT token
-                    var token = GenerateJwtToken(admin.Id.ToString(), request.Usuario, "Admin");
+                    var token = GenerateJwtToken(adminId, request.Usuario, "Admin");
 
                     // Log the login
-                    await LogLoginActivity(admin.Id, request.Usuario);
+                    await LogLoginActivity(adminId, request.Usuario);
 
                     // Return the token and user info
                     return Ok(new AdminLoginResponseDto
                     {
                         Token = token,
-                        Nome = admin.Nome,
+                        Nome = adminName,
                         Usuario = request.Usuario,
-                        Email = admin.Email
+                        Email = adminEmail
                     });
                 }
 
-                // Real-world implementation using Entity Framework
-                var adminFromDb = await _context.Administradores
-                    .FirstOrDefaultAsync(a => a.Usuario == request.Usuario);
+                // Real-world implementation would check the database
+                string adminIdFromDb = null;
+                string adminNameFromDb = null;
+                string adminEmailFromDb = null;
 
-                if (adminFromDb != null)
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    // In a real implementation, you would hash the password and compare it with the stored hash
+                    string query = @"
+                        SELECT Id, Nome, Email
+                        FROM Administradores
+                        WHERE Usuario = @Usuario
+                    ";
+
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@Usuario", request.Usuario);
+
+                        using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                adminIdFromDb = reader["Id"].ToString();
+                                adminNameFromDb = reader["Nome"].ToString();
+                                adminEmailFromDb = reader["Email"].ToString();
+                            }
+                        }
+                    }
+                }
+
+                if (adminIdFromDb != null)
                 {
                     // In a real implementation, you would properly verify the password here
-                    // using the stored hash and salt
                     
                     // Generate JWT token
-                    var token = GenerateJwtToken(adminFromDb.Id.ToString(), request.Usuario, "Admin");
+                    var token = GenerateJwtToken(adminIdFromDb, request.Usuario, "Admin");
 
                     // Log the login
-                    await LogLoginActivity(adminFromDb.Id, request.Usuario);
-
-                    // Update last access
-                    adminFromDb.UltimoAcesso = DateTime.Now;
-                    await _context.SaveChangesAsync();
+                    await LogLoginActivity(adminIdFromDb, request.Usuario);
 
                     // Return the token and user info
                     return Ok(new AdminLoginResponseDto
                     {
                         Token = token,
-                        Nome = adminFromDb.Nome,
+                        Nome = adminNameFromDb,
                         Usuario = request.Usuario,
-                        Email = adminFromDb.Email
+                        Email = adminEmailFromDb
                     });
                 }
 
@@ -152,21 +163,27 @@ namespace SistemaFidelidade.API.Controllers
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        private async Task LogLoginActivity(Guid adminId, string username)
+        private async Task LogLoginActivity(string adminId, string username)
         {
             try
             {
-                var logEntry = new LogSistema
+                using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
-                    UsuarioId = adminId,
-                    TipoUsuario = "Admin",
-                    Acao = "Login",
-                    Detalhes = "Administrador realizou login",
-                    IP = HttpContext.Connection.RemoteIpAddress.ToString()
-                };
+                    await connection.OpenAsync();
 
-                _context.LogsSistema.Add(logEntry);
-                await _context.SaveChangesAsync();
+                    string query = @"
+                        INSERT INTO LogsSistema (UsuarioId, TipoUsuario, Acao, Detalhes, IP)
+                        VALUES (@UsuarioId, 'Admin', 'Login', 'Administrador realizou login', @IP)
+                    ";
+
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@UsuarioId", new Guid(adminId));
+                        command.Parameters.AddWithValue("@IP", HttpContext.Connection.RemoteIpAddress.ToString());
+
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
             }
             catch
             {

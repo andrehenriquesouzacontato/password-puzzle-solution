@@ -1,10 +1,9 @@
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
-using SistemaFidelidade.API.Data;
-using SistemaFidelidade.API.Models;
 using System;
+using System.Data;
 using System.Net;
 using System.Net.Mail;
 using System.Security.Cryptography;
@@ -17,18 +16,18 @@ namespace SistemaFidelidade.API.Controllers
     [Route("api/[controller]")]
     public class PasswordResetController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly string _connectionString;
         private readonly string _emailFrom;
         private readonly string _smtpServer;
         private readonly int _smtpPort;
         private readonly string _smtpUsername;
         private readonly string _smtpPassword;
 
-        public PasswordResetController(ApplicationDbContext context, IConfiguration configuration)
+        public PasswordResetController(IConfiguration configuration)
         {
-            _context = context;
             _configuration = configuration;
+            _connectionString = _configuration.GetConnectionString("DefaultConnection");
             _emailFrom = _configuration["EmailSettings:From"];
             _smtpServer = _configuration["EmailSettings:SmtpServer"];
             _smtpPort = int.Parse(_configuration["EmailSettings:SmtpPort"]);
@@ -61,33 +60,34 @@ namespace SistemaFidelidade.API.Controllers
         {
             try
             {
-                // Buscar cliente com CPF e email correspondentes
-                var cliente = await _context.Clientes
-                    .FirstOrDefaultAsync(c => c.CPF == request.CPF && c.Email == request.Email);
+                string token = null;
+                string email = null;
 
-                if (cliente != null)
+                using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
-                    // Gerar token de recuperação
-                    string token = GenerateResetToken();
-                    
-                    // Definir validade de 24 horas
-                    cliente.TokenRecuperacao = token;
-                    cliente.TokenExpiracao = DateTime.Now.AddHours(24);
-                    
-                    await _context.SaveChangesAsync();
+                    await connection.OpenAsync();
 
-                    // Registrar log
-                    _context.LogsSistema.Add(new LogSistema
+                    using (SqlCommand command = new SqlCommand("sp_GerarTokenRecuperacao", connection))
                     {
-                        UsuarioId = cliente.Id,
-                        TipoUsuario = "Cliente",
-                        Acao = "Solicitação de Recuperação de Senha",
-                        Detalhes = "Token gerado com sucesso"
-                    });
-                    await _context.SaveChangesAsync();
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@CPF", request.CPF);
+                        command.Parameters.AddWithValue("@Email", request.Email);
 
+                        using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                token = reader["Token"].ToString();
+                                email = reader["Email"].ToString();
+                            }
+                        }
+                    }
+                }
+
+                if (token != null && email != null)
+                {
                     // Enviar email com o token
-                    await SendPasswordResetEmail(cliente.Email, token);
+                    await SendPasswordResetEmail(email, token);
                     return Ok(new { message = "Um e-mail de recuperação de senha foi enviado para o endereço cadastrado." });
                 }
                 else
@@ -108,11 +108,33 @@ namespace SistemaFidelidade.API.Controllers
         {
             try
             {
-                // Verificar se token existe e é válido
-                var cliente = await _context.Clientes
-                    .FirstOrDefaultAsync(c => c.TokenRecuperacao == request.Token && c.TokenExpiracao > DateTime.Now);
+                bool isValid = false;
+                Guid clientId = Guid.Empty;
 
-                if (cliente != null)
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    using (SqlCommand command = new SqlCommand("sp_ValidarTokenRecuperacao", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@Token", request.Token);
+
+                        using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                isValid = Convert.ToBoolean(reader["TokenValido"]);
+                                if (!reader.IsDBNull(reader.GetOrdinal("ClienteId")))
+                                {
+                                    clientId = Guid.Parse(reader["ClienteId"].ToString());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (isValid)
                 {
                     return Ok(new { isValid = true });
                 }
@@ -133,34 +155,35 @@ namespace SistemaFidelidade.API.Controllers
         {
             try
             {
-                // Buscar cliente pelo token
-                var cliente = await _context.Clientes
-                    .FirstOrDefaultAsync(c => c.TokenRecuperacao == request.Token && c.TokenExpiracao > DateTime.Now);
+                // Generate salt and hash for the new password
+                string salt = GenerateSalt();
+                string hash = ComputeHash(request.NewPassword, salt);
 
-                if (cliente != null)
+                bool success = false;
+
+                using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
-                    // Generate salt and hash for the new password
-                    string salt = GenerateSalt();
-                    string hash = ComputeHash(request.NewPassword, salt);
+                    await connection.OpenAsync();
 
-                    // Atualizar senha e limpar token
-                    cliente.SenhaSalt = salt;
-                    cliente.SenhaHash = hash;
-                    cliente.TokenRecuperacao = null;
-                    cliente.TokenExpiracao = null;
-                    
-                    await _context.SaveChangesAsync();
-
-                    // Registrar log
-                    _context.LogsSistema.Add(new LogSistema
+                    using (SqlCommand command = new SqlCommand("sp_AtualizarSenha", connection))
                     {
-                        UsuarioId = cliente.Id,
-                        TipoUsuario = "Cliente",
-                        Acao = "Senha Atualizada",
-                        Detalhes = "Senha atualizada com sucesso via token de recuperação"
-                    });
-                    await _context.SaveChangesAsync();
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@Token", request.Token);
+                        command.Parameters.AddWithValue("@SenhaSalt", salt);
+                        command.Parameters.AddWithValue("@SenhaHash", hash);
 
+                        using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                success = Convert.ToBoolean(reader["Sucesso"]);
+                            }
+                        }
+                    }
+                }
+
+                if (success)
+                {
                     return Ok(new { message = "Senha atualizada com sucesso." });
                 }
                 else
@@ -173,13 +196,6 @@ namespace SistemaFidelidade.API.Controllers
                 // Log the exception
                 return StatusCode(500, new { message = "Ocorreu um erro ao atualizar a senha." });
             }
-        }
-
-        // Helper method to generate a reset token
-        private string GenerateResetToken()
-        {
-            return Convert.ToBase64String(Guid.NewGuid().ToByteArray()) + 
-                   Convert.ToBase64String(Guid.NewGuid().ToByteArray());
         }
 
         // Helper method to send password reset email

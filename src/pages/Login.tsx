@@ -1,61 +1,32 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import InputMask from '../components/InputMask';
 import { AlertCircle } from 'lucide-react';
-import api from '../services/api';
-import authService from '../services/authService';
 
 const Login: React.FC = () => {
   const [cpf, setCpf] = useState('');
   const [senha, setSenha] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [apiStatus, setApiStatus] = useState<string>('Verificando conexão...');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const checkApiConnection = async () => {
-      try {
-        await api.get('/health');
-        setApiStatus('Conectado à API');
-        toast.success('API conectada com sucesso!');
-      } catch (error) {
-        console.error('Erro ao conectar com a API:', error);
-        setApiStatus('Erro na conexão com a API');
-        toast.error('Não foi possível conectar à API. Verifique se o servidor está rodando na porta 5000.');
-      }
-    };
-
-    checkApiConnection();
-  }, []);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      // Tentativa real de login com a API
-      const loginData = {
-        cpf: cpf.replace(/\D/g, ''), // Remove caracteres não numéricos
-        senha: senha
-      };
+    // Mock login - in real implementation this would connect to your API
+    setTimeout(() => {
+      setIsLoading(false);
       
-      await authService.clienteLogin(loginData);
-      toast.success('Login realizado com sucesso!');
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Erro ao fazer login:', error);
-      // Fallback para desenvolvimento - Login simulado
+      // Simulate successful login
       if (cpf.length > 10) {
-        toast.success('Login simulado realizado com sucesso!');
+        toast.success('Login realizado com sucesso!');
         navigate('/dashboard');
       } else {
         toast.error('CPF ou senha inválidos');
       }
-    } finally {
-      setIsLoading(false);
-    }
+    }, 1000);
   };
 
   return (
@@ -67,10 +38,6 @@ const Login: React.FC = () => {
             <span>de Fidelidade</span>
           </h1>
           <p className="text-gray-600">Acesse sua conta para gerenciar pontos</p>
-          
-          <div className={`mt-2 text-sm ${apiStatus.includes('Erro') ? 'text-red-500' : 'text-green-600'}`}>
-            {apiStatus}
-          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
