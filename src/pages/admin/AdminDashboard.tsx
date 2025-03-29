@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../../components/Header';
-import { Search, UserPlus } from 'lucide-react';
+import { Search, UserPlus, Award } from 'lucide-react';
 import InputMask from '../../components/InputMask';
 
 // Array vazio de clientes
