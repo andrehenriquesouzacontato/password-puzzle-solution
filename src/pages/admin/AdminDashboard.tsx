@@ -1,25 +1,11 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../../components/Header';
-import { Search, UserPlus, Award } from 'lucide-react';
+import { Search, UserPlus } from 'lucide-react';
 import InputMask from '../../components/InputMask';
 
-// Mock data
-const mockClientes = [
-  {
-    id: '1',
-    nome: 'Andre Henrique de Souza Guedes',
-    cpf: '309.628.608-67',
-    pontos: 96
-  },
-  {
-    id: '2',
-    nome: 'Sanchaluana de Souza',
-    cpf: '123.456.789-00',
-    pontos: 38
-  }
-];
+// Array vazio de clientes
+const mockClientes = [];
 
 const AdminDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -107,8 +93,8 @@ const AdminDashboard: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-4 text-gray-500">
-              Nenhum cliente encontrado
+            <div className="text-center py-8 text-gray-500">
+              Nenhum cliente cadastrado. Utilize o botão "Cadastrar Novo Cliente" para adicionar clientes.
             </div>
           )}
         </div>
