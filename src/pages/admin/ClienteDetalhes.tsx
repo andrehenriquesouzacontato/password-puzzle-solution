@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -17,7 +16,6 @@ const ClienteDetalhes: React.FC = () => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   
   useEffect(() => {
-    // Buscar dados do cliente do localStorage
     const loadClienteData = () => {
       console.log('Fetching details for client ID:', id);
       const savedClientes = localStorage.getItem('clientes');
@@ -42,7 +40,6 @@ const ClienteDetalhes: React.FC = () => {
       }
     };
 
-    // Buscar compras do cliente do localStorage
     const loadComprasData = () => {
       const savedCompras = localStorage.getItem('compras');
       if (savedCompras) {
@@ -68,11 +65,15 @@ const ClienteDetalhes: React.FC = () => {
       return;
     }
     
-    // Converter para número e calcular pontos (1 real = 1 ponto)
-    const valorNumerico = parseFloat(valor.replace(',', '.'));
+    const valorNumerico = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
+    
+    if (isNaN(valorNumerico) || valorNumerico <= 0) {
+      toast.error('Informe um valor válido para a compra');
+      return;
+    }
+    
     const pontosGanhos = Math.floor(valorNumerico);
     
-    // Criar nova compra
     const novaCompra: Compra = {
       id: Date.now().toString(),
       clienteId: cliente.id,
@@ -81,7 +82,6 @@ const ClienteDetalhes: React.FC = () => {
       data: new Date().toISOString().split('T')[0]
     };
     
-    // Atualizar lista de compras
     const savedCompras = localStorage.getItem('compras');
     let comprasAtualizadas: Compra[] = [];
     
@@ -96,7 +96,6 @@ const ClienteDetalhes: React.FC = () => {
     comprasAtualizadas.push(novaCompra);
     localStorage.setItem('compras', JSON.stringify(comprasAtualizadas));
     
-    // Atualizar pontos do cliente
     const savedClientes = localStorage.getItem('clientes');
     if (savedClientes && cliente) {
       try {
@@ -119,7 +118,6 @@ const ClienteDetalhes: React.FC = () => {
       }
     }
     
-    // Atualizar estado local
     setCompras(prev => [novaCompra, ...prev]);
     setValor('');
     
@@ -133,7 +131,6 @@ const ClienteDetalhes: React.FC = () => {
   const handleDeleteClient = () => {
     if (!cliente) return;
     
-    // Remover cliente do localStorage
     const savedClientes = localStorage.getItem('clientes');
     if (savedClientes) {
       try {
@@ -141,7 +138,6 @@ const ClienteDetalhes: React.FC = () => {
         const clientesAtualizados = parsedClientes.filter(c => c.id !== cliente.id);
         localStorage.setItem('clientes', JSON.stringify(clientesAtualizados));
         
-        // Remover também todas as compras do cliente
         const savedCompras = localStorage.getItem('compras');
         if (savedCompras) {
           const parsedCompras: Compra[] = JSON.parse(savedCompras);
@@ -227,7 +223,6 @@ const ClienteDetalhes: React.FC = () => {
           </div>
         </div>
         
-        {/* Informações do Cliente */}
         <div className="card-container">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Informações do Cliente</h2>
@@ -255,25 +250,19 @@ const ClienteDetalhes: React.FC = () => {
           </div>
         </div>
         
-        {/* Registrar Nova Compra */}
         <div className="card-container">
           <h2 className="text-xl font-semibold mb-4">Registrar Nova Compra</h2>
           <p className="text-gray-600 text-sm mb-4">1 real = 1 ponto</p>
           
           <form onSubmit={handleRegistrarCompra} className="flex gap-2 items-start">
             <div className="flex-1">
-              <div className="relative">
-                <InputMask
-                  type="currency"
-                  value={valor}
-                  onChange={setValor}
-                  placeholder="0,00"
-                  className="pl-8"
-                />
-                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">
-                  R$
-                </span>
-              </div>
+              <InputMask
+                type="currency"
+                value={valor}
+                onChange={setValor}
+                placeholder="0,00"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent"
+              />
             </div>
             
             <button
@@ -286,7 +275,6 @@ const ClienteDetalhes: React.FC = () => {
           </form>
         </div>
         
-        {/* Gerenciar Pontos */}
         <div className="card-container">
           <h2 className="text-xl font-semibold mb-4">Gerenciar Pontos</h2>
           
@@ -299,7 +287,6 @@ const ClienteDetalhes: React.FC = () => {
           </button>
         </div>
         
-        {/* Histórico */}
         <div className="card-container">
           <h2 className="text-xl font-semibold mb-4">Histórico</h2>
           

@@ -83,7 +83,7 @@ const InputMask: React.FC<InputMaskProps> = ({
     <div className="relative w-full">
       <input
         type={getInputType()}
-        value={type === 'currency' ? `${value}` : value}
+        value={value}
         onChange={handleChange}
         placeholder={placeholder}
         className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent ${
