@@ -6,6 +6,8 @@ import Header from '../../components/Header';
 import InputMask from '../../components/InputMask';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { isValidCPF, isValidEmail } from '../../utils/formatters';
+import { Cliente } from '../../models/types';
+import { v4 as uuidv4 } from 'uuid';
 
 const NovoCliente: React.FC = () => {
   const [nome, setNome] = useState('');
@@ -19,24 +21,68 @@ const NovoCliente: React.FC = () => {
     e.preventDefault();
     
     // Validate inputs
+    if (!nome.trim()) {
+      toast.error('Nome é obrigatório');
+      return;
+    }
+    
     if (!isValidCPF(cpf)) {
       toast.error('CPF inválido');
       return;
     }
     
-    if (!isValidEmail(email)) {
+    if (email && !isValidEmail(email)) {
       toast.error('E-mail inválido');
+      return;
+    }
+    
+    if (!telefone.trim()) {
+      toast.error('Telefone é obrigatório');
       return;
     }
     
     setIsLoading(true);
     
-    // Simulate API call to create a new client
+    // Check if CPF already exists
+    const savedClientes = localStorage.getItem('clientes');
+    let clientesArray: Cliente[] = [];
+    
+    if (savedClientes) {
+      try {
+        clientesArray = JSON.parse(savedClientes);
+        
+        // Check if CPF already exists
+        const cpfExists = clientesArray.some(cliente => cliente.cpf === cpf);
+        if (cpfExists) {
+          setIsLoading(false);
+          toast.error('CPF já cadastrado');
+          return;
+        }
+      } catch (error) {
+        console.error('Error parsing clients:', error);
+      }
+    }
+    
+    // Create new client
+    const novoCliente: Cliente = {
+      id: uuidv4(),
+      nome,
+      cpf,
+      email,
+      telefone,
+      pontos: 0,
+      dataCadastro: new Date().toISOString()
+    };
+    
+    // Add to array and save
+    clientesArray.push(novoCliente);
+    localStorage.setItem('clientes', JSON.stringify(clientesArray));
+    
     setTimeout(() => {
       setIsLoading(false);
       toast.success('Cliente cadastrado com sucesso!');
       navigate('/admin/dashboard');
-    }, 1500);
+    }, 1000);
   };
 
   return (

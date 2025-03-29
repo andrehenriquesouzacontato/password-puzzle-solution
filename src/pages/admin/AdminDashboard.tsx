@@ -1,27 +1,51 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../../components/Header';
 import { Search, UserPlus, Award } from 'lucide-react';
 import InputMask from '../../components/InputMask';
-
-// Array vazio de clientes
-const mockClientes = [];
+import { Cliente } from '../../models/types';
+import { toast } from 'sonner';
 
 const AdminDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [clientes, setClientes] = useState(mockClientes);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [filteredClientes, setFilteredClientes] = useState<Cliente[]>([]);
+  
+  // Load clients from localStorage on component mount
+  useEffect(() => {
+    const savedClientes = localStorage.getItem('clientes');
+    if (savedClientes) {
+      try {
+        const parsedClientes = JSON.parse(savedClientes);
+        setClientes(parsedClientes);
+        setFilteredClientes(parsedClientes);
+      } catch (error) {
+        console.error('Error parsing clients from localStorage:', error);
+        toast.error('Erro ao carregar clientes');
+      }
+    }
+  }, []);
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would call an API with the search query
-    console.log('Searching for:', searchQuery);
-    // For demo, we'll just filter the mock data
-    const filteredClientes = mockClientes.filter(cliente => 
+    
+    if (!searchQuery.trim()) {
+      setFilteredClientes(clientes);
+      return;
+    }
+    
+    const searchQueryLower = searchQuery.toLowerCase().trim();
+    const filteredResults = clientes.filter(cliente => 
       cliente.cpf.includes(searchQuery) || 
-      cliente.nome.toLowerCase().includes(searchQuery.toLowerCase())
+      cliente.nome.toLowerCase().includes(searchQueryLower)
     );
-    setClientes(filteredClientes);
+    
+    setFilteredClientes(filteredResults);
+    
+    if (filteredResults.length === 0) {
+      toast.info('Nenhum cliente encontrado');
+    }
   };
   
   return (
@@ -41,7 +65,7 @@ const AdminDashboard: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder="Digite o CPF do cliente"
+                placeholder="Digite o CPF ou nome do cliente"
                 className="w-full"
               />
             </div>
@@ -70,11 +94,11 @@ const AdminDashboard: React.FC = () => {
         
         {/* Clientes Recentes */}
         <div className="card-container">
-          <h2 className="text-xl font-semibold mb-4">Clientes Recentes</h2>
+          <h2 className="text-xl font-semibold mb-4">Clientes Cadastrados</h2>
           
-          {clientes.length > 0 ? (
+          {filteredClientes.length > 0 ? (
             <div className="space-y-3">
-              {clientes.map(cliente => (
+              {filteredClientes.map(cliente => (
                 <Link 
                   key={cliente.id}
                   to={`/admin/cliente/${cliente.id}`}
@@ -95,7 +119,7 @@ const AdminDashboard: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
-              Nenhum cliente cadastrado. Utilize o botão "Cadastrar Novo Cliente" para adicionar clientes.
+              Nenhum cliente encontrado. Utilize o botão "Cadastrar Novo Cliente" para adicionar clientes.
             </div>
           )}
         </div>
